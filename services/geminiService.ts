@@ -1,9 +1,27 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { GameLevel, Question } from '../types';
 
-// La API Key se obtiene directamente de las variables de entorno, restaurando el método original.
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+let ai: GoogleGenAI | null = null;
+let initError: string | null = null;
 
+try {
+    // @google/genai-ts-sdk-guide-update: The API key must be obtained from process.env.API_KEY.
+    // La API Key se obtiene de las variables de entorno, que Vite inyectará durante la construcción.
+    const apiKey = process.env.API_KEY;
+
+    if (!apiKey) {
+        throw new Error("API_KEY no configurada. Asegúrate de añadir VITE_API_KEY en los ajustes de Netlify.");
+    }
+    ai = new GoogleGenAI({ apiKey });
+
+} catch (e) {
+    if (e instanceof Error) {
+        initError = e.message;
+    } else {
+        initError = "Ocurrió un error desconocido al inicializar la API.";
+    }
+    console.error("Error de inicialización de Gemini:", initError);
+}
 
 // --- Helpers para generación de números ---
 
@@ -150,17 +168,20 @@ const problemTypes: ProblemType[] = [
 ];
 
 export const generateQuestion = async (level: GameLevel): Promise<Question> => {
+    if (!ai || initError) {
+        console.error("No se puede generar la pregunta. Error:", initError);
+        const fallbackAnswer = level === 1 ? 4 : level === 2 ? 30 : 150;
+        return {
+            question: `Error: ${initError || 'El cliente API no pudo inicializarse.'}`,
+            options: [fallbackAnswer - 1, fallbackAnswer, fallbackAnswer + 2].sort(() => Math.random() - 0.5),
+            answer: fallbackAnswer
+        };
+    }
+    
     try {
-        if (!process.env.API_KEY) {
-             throw new Error("API Key no configurada en las variables de entorno.");
-        }
-        // 1. Seleccionar un tipo de problema aleatorio
         const problemType = problemTypes[Math.floor(Math.random() * problemTypes.length)];
-
-        // 2. Generar operandos y respuesta correcta según el tipo y nivel
         const { n1, n2, answer } = problemType.generateOperands(level);
         
-        // 3. Construir el prompt para la IA
         const gradeMap = {
             [GameLevel.FirstGrade]: '6-7 años (1er Grado)',
             [GameLevel.SecondGrade]: '7-8 años (2do Grado)',
@@ -208,24 +229,20 @@ export const generateQuestion = async (level: GameLevel): Promise<Question> => {
         const jsonString = response.text.trim();
         const parsedQuestion = JSON.parse(jsonString) as Question;
 
-        // Verificación y corrección de la respuesta por si la IA se equivoca
         if (parsedQuestion.answer !== answer) {
              console.warn(`La IA generó una respuesta (${parsedQuestion.answer}) que no coincide con la calculada (${answer}). Corrigiendo.`);
              parsedQuestion.answer = answer;
              if (!parsedQuestion.options.includes(answer)) {
-                 // Reemplaza una de las opciones incorrectas con la respuesta correcta
                  parsedQuestion.options[0] = answer;
              }
         }
 
-        // Asegurar que las opciones se muestren en orden aleatorio
         parsedQuestion.options.sort(() => Math.random() - 0.5);
 
         return parsedQuestion;
 
     } catch (error) {
         console.error("Error al generar pregunta desde Gemini API:", error);
-        // Pregunta de respaldo en caso de fallo de la API
         const fallbackAnswer = level === 1 ? 4 : level === 2 ? 30 : 150;
         return {
             question: `¿${fallbackAnswer-2} + 2 = ? (Error API)`,

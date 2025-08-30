@@ -1,26 +1,10 @@
-const CACHE_NAME = 'vito-math-v1';
+const CACHE_NAME = 'vito-math-v3';
 const urlsToCache = [
-  '.',
-  './index.html',
-  './index.tsx',
-  './metadata.json',
-  './App.tsx',
-  './types.ts',
-  './services/geminiService.ts',
-  './services/audioService.ts',
-  './components/StartScreen.tsx',
-  './components/Game.tsx',
-  './components/HUD.tsx',
-  './components/Player.tsx',
-  './components/QuestionModal.tsx',
-  './components/icons/index.tsx',
-  './components/Background.tsx',
-  './components/Platform.tsx',
-  './components/Gem.tsx',
-  './components/UndergroundBackground.tsx',
-  './components/Tortubit.tsx',
-  './components/HelpModal.tsx',
-  './vite.svg'
+  '/',
+  '/index.html',
+  '/manifest.json',
+  '/icon-192.png',
+  '/icon-512.png',
 ];
 
 self.addEventListener('install', event => {
@@ -40,7 +24,17 @@ self.addEventListener('fetch', event => {
         if (response) {
           return response;
         }
-        return fetch(event.request);
+        return fetch(event.request).then(fetchResponse => {
+          // No cachear las llamadas a la API de Google
+          if (event.request.url.includes('generativelanguage.googleapis.com')) {
+            return fetchResponse;
+          }
+          
+          return caches.open(CACHE_NAME).then(cache => {
+            cache.put(event.request, fetchResponse.clone());
+            return fetchResponse;
+          });
+        });
       })
   );
 });
