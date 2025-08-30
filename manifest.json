@@ -1,0 +1,21 @@
+{
+  "short_name": "Vito Math",
+  "name": "Aventura Matemática con Vito",
+  "description": "Una aplicación web educativa inspirada en Vito donde los niños resuelven problemas matemáticos para avanzar de nivel.",
+  "icons": [
+    {
+      "src": "./icon-192.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "./icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#5c94fc",
+  "background_color": "#5c94fc"
+}
