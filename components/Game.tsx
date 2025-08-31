@@ -450,6 +450,7 @@ const Game: React.FC<GameProps> = ({ level, onGameOver, onRestart }) => {
         // Activa el modal exactamente un segundo después de que comience la ronda de bonus
         if (gameMode === 'bonus' && bonusTimer === BONUS_TIME_LIMIT - 1 && !bonusInfoShown) {
             isPaused.current = true;
+            playSound('gemCaveMessage');
             setShowBonusInfoModal(true);
             setBonusInfoShown(true);
         }

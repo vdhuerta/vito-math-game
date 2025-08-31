@@ -20,6 +20,7 @@ export const soundSources = {
   correctAnswer: `${BASE_URL}Respuesta_Correcta.mp3`,
   incorrectAnswer: `${BASE_URL}Respuesta_Incorrecta.mp3`,
   music: `${BASE_URL}Vito_Music2.mp3`,
+  gemCaveMessage: `${BASE_URL}Alerta_Msg_Gemas.mp3`,
 };
 
 type SoundName = keyof typeof soundSources;
