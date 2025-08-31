@@ -2,15 +2,15 @@ let audioContext: AudioContext | null = null;
 const soundBuffers: { [key: string]: AudioBuffer } = {};
 
 export const soundSources = {
-    jump: 'https://actions.google.com/sounds/v1/cartoon/boing.ogg',
-    correct: 'https://actions.google.com/sounds/v1/events/positive_notification.ogg',
-    incorrect: 'https://actions.google.com/sounds/v1/events/failure_notification.ogg',
-    victory: 'https://actions.google.com/sounds/v1/cartoon/magic_chime.ogg',
-    bonusStart: 'https://actions.google.com/sounds/v1/sports/swoosh_and_hit.ogg',
-    gem: 'https://actions.google.com/sounds/v1/cartoon/power_up.ogg',
-    stomp: 'https://actions.google.com/sounds/v1/cartoon/squish.ogg',
-    hitBlock: 'https://actions.google.com/sounds/v1/cartoon/pop.ogg',
-    gameOver: 'https://actions.google.com/sounds/v1/events/game_over.ogg',
+    jump: 'https://storage.googleapis.com/hume-rick-assets/mario-jump-sound.mp3',
+    correct: 'https://storage.googleapis.com/hume-rick-assets/mario-coin-sound.mp3',
+    incorrect: 'https://storage.googleapis.com/hume-rick-assets/mario-pipe-sound.mp3',
+    victory: 'https://storage.googleapis.com/hume-rick-assets/level-clear-sound.mp3',
+    bonusStart: 'https://storage.googleapis.com/hume-rick-assets/power-up-appears-sound.mp3',
+    gem: 'https://storage.googleapis.com/hume-rick-assets/mario-coin-sound.mp3',
+    stomp: 'https://storage.googleapis.com/hume-rick-assets/stomp-sound.mp3',
+    hitBlock: 'https://storage.googleapis.com/hume-rick-assets/block-hit-sound.mp3',
+    gameOver: 'https://storage.googleapis.com/hume-rick-assets/game-over-sound.mp3',
 };
 
 const soundVolumes: { [key: string]: number } = {

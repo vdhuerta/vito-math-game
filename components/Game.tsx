@@ -237,7 +237,7 @@ const STAGE_CONFIG = {
 };
 
 
-type BonusTransitionState = 'none' | 'holeVisible' | 'falling' | 'complete' | 'returning';
+type BonusTransitionState = 'none' | 'holeVisible' | 'falling' | 'in_bonus' | 'returning';
 export type GameMode = 'normal' | 'bonus' | 'preCastleRun' | 'finalRun';
 
 interface GameProps {
@@ -267,6 +267,8 @@ const Game: React.FC<GameProps> = ({ level, onGameOver, onRestart }) => {
     const [gameMessage, setGameMessage] = useState<string | null>(null);
     const [stageComplete, setStageComplete] = useState(false);
     const [isHelpVisible, setIsHelpVisible] = useState(false);
+    const [showBonusInfoModal, setShowBonusInfoModal] = useState(false);
+    const [bonusInfoShown, setBonusInfoShown] = useState(false);
     
     const [questionBlocks, setQuestionBlocks] = useState<QuestionBlockState[]>([]);
     const [platforms, setPlatforms] = useState<PlatformState[]>([]);
@@ -284,7 +286,6 @@ const Game: React.FC<GameProps> = ({ level, onGameOver, onRestart }) => {
     const [rockPlatforms, setRockPlatforms] = useState<RockPlatformState[]>([]);
     const [bonusTransitionState, setBonusTransitionState] = useState<BonusTransitionState>('none');
     const [transitionYOffset, setTransitionYOffset] = useState(0);
-    const [showBonusInstructions, setShowBonusInstructions] = useState(false);
 
 
     const keysPressed = useRef<{ [key: string]: boolean }>({});
@@ -370,6 +371,7 @@ const Game: React.FC<GameProps> = ({ level, onGameOver, onRestart }) => {
         setTransitionYOffset(0);
         setGems([]);
         setRockPlatforms([]);
+        setBonusInfoShown(false);
         displayMessage(`Etapa ${level}-${currentStage}`, 2000);
 
     }, [level]);
@@ -430,13 +432,6 @@ const Game: React.FC<GameProps> = ({ level, onGameOver, onRestart }) => {
         setBonusTransitionState('returning');
     }, []);
 
-    const handleStartBonus = () => {
-        setShowBonusInstructions(false);
-        setBonusTimer(BONUS_TIME_LIMIT);
-        isPaused.current = false;
-    };
-
-
     useEffect(() => {
         if (gameMode === 'bonus' && bonusTimer > 0 && !isPaused.current) {
             const timerId = setTimeout(() => setBonusTimer(t => t - 1), 1000);
@@ -447,26 +442,36 @@ const Game: React.FC<GameProps> = ({ level, onGameOver, onRestart }) => {
     }, [gameMode, bonusTimer, endBonusLevel, isPaused.current]);
 
     useEffect(() => {
+        // Activa el modal exactamente un segundo después de que comience la ronda de bonus
+        if (gameMode === 'bonus' && bonusTimer === BONUS_TIME_LIMIT - 1 && !bonusInfoShown) {
+            isPaused.current = true;
+            setShowBonusInfoModal(true);
+            setBonusInfoShown(true);
+        }
+    }, [gameMode, bonusTimer, bonusInfoShown]);
+
+    // Handles the "falling" animation into the bonus level.
+    useEffect(() => {
         if (bonusTransitionState === 'falling') {
             const fallInterval = setInterval(() => {
                 setTransitionYOffset(prev => {
-                    const newOffset = prev + 2; // Adjust speed of transition
+                    const newOffset = prev + 2;
                     if (newOffset >= 100) {
                         clearInterval(fallInterval);
                         setTransitionYOffset(100);
-                        setBonusTransitionState('complete');
+                        setBonusTransitionState('in_bonus'); // Animation finished, trigger setup.
                         return 100;
                     }
                     return newOffset;
                 });
-            }, 16); // ~60fps
+            }, 16);
             return () => clearInterval(fallInterval);
         }
     }, [bonusTransitionState]);
-    
+
+    // Sets up the bonus level once the falling animation is complete.
     useEffect(() => {
-        // This effect runs *after* the falling transition is complete.
-        if (bonusTransitionState === 'complete' && gameMode !== 'bonus') {
+        if (bonusTransitionState === 'in_bonus') {
             setGameMode('bonus');
             playerPosition.current = { x: 5, y: GROUND_Y };
             playerVelocity.current = { x: 0, y: 0 };
@@ -477,16 +482,11 @@ const Game: React.FC<GameProps> = ({ level, onGameOver, onRestart }) => {
             if (config) {
                 setGems(config.gems);
                 setRockPlatforms(config.platforms);
-            } else {
-                setGems([]);
-                setRockPlatforms([]);
             }
-            
-            setShowBonusInstructions(true);
-            isPaused.current = true;
+            setBonusTimer(BONUS_TIME_LIMIT);
         }
-    }, [bonusTransitionState, level, stage, gameMode]);
-
+    }, [bonusTransitionState, level, stage]);
+    
     useEffect(() => {
         if (bonusTransitionState === 'returning') {
             const returnInterval = setInterval(() => {
@@ -937,6 +937,12 @@ const Game: React.FC<GameProps> = ({ level, onGameOver, onRestart }) => {
         }, 1500);
     };
 
+    const handleCloseBonusInfo = () => {
+        setShowBonusInfoModal(false);
+        isPaused.current = false;
+        playSound('correct');
+    };
+
     const isGameVisible = !isLoadingQuestion && !showQuestion;
     const isPlayerVisible = isGameVisible && bonusTransitionState !== 'falling' && bonusTransitionState !== 'returning';
 
@@ -1104,20 +1110,6 @@ const Game: React.FC<GameProps> = ({ level, onGameOver, onRestart }) => {
             <OnScreenControls keysPressed={keysPressed} onJump={handleJump} />
 
             {/* Modals are outside the scrolling world container */}
-            {showBonusInstructions && (
-                <div className="absolute inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4 font-fredoka">
-                    <div className="bg-white p-8 rounded-2xl shadow-2xl text-center border-8 border-vito-yellow w-full max-w-lg">
-                        <h2 className="text-4xl font-press-start text-vito-blue mb-4" style={{ textShadow: '2px 2px #000' }}>¡Cueva de Gemas!</h2>
-                        <p className="text-xl text-gray-700 mb-6">¡Atrapa todas las gemas que puedas en <strong>{BONUS_TIME_LIMIT} segundos</strong>!</p>
-                        <button
-                            onClick={handleStartBonus}
-                            className="bg-vito-green text-white font-bold py-3 px-8 rounded-full hover:bg-vito-yellow hover:text-black transition-transform transform hover:scale-110 text-2xl"
-                        >
-                            ¡OK!
-                        </button>
-                    </div>
-                </div>
-            )}
             {isHelpVisible && <HelpModal onClose={toggleHelp} />}
             {showQuestion && currentQuestion && (
                 <QuestionModal question={currentQuestion} onAnswer={handleAnswer} />
@@ -1125,6 +1117,22 @@ const Game: React.FC<GameProps> = ({ level, onGameOver, onRestart }) => {
              {isLoadingQuestion && (
                  <div className="absolute inset-0 bg-black bg-opacity-70 flex items-center justify-center z-40">
                     <p className="text-white text-3xl font-press-start">Cargando Pregunta...</p>
+                </div>
+            )}
+            {showBonusInfoModal && (
+                <div className="absolute inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4 font-fredoka">
+                    <div className="w-full max-w-lg bg-white rounded-2xl p-8 shadow-2xl border-8 border-vito-yellow text-center">
+                        <h2 className="text-3xl md:text-4xl font-press-start text-vito-green mb-4">¡CUEVA DE GEMAS!</h2>
+                        <p className="text-xl text-gray-700 mb-6">
+                            ¡Rápido! Tienes <span className="font-bold">{BONUS_TIME_LIMIT} segundos</span> para recoger todas las gemas que puedas.
+                        </p>
+                        <button
+                            onClick={handleCloseBonusInfo}
+                            className="bg-vito-blue text-white font-bold py-3 px-8 rounded-full hover:bg-blue-600 transition-transform transform hover:scale-110 text-2xl"
+                        >
+                            ¡OK!
+                        </button>
+                    </div>
                 </div>
             )}
         </div>
