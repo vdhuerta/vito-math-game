@@ -529,7 +529,7 @@ const Game: React.FC<GameProps> = ({ level, onGameOver, onRestart }) => {
         let animationFrameId: number;
 
         const gameLoop = () => {
-            if (showQuestion || isHelpVisible || isEnteringCastle || (stageComplete && gameMode !== 'bonus' && bonusTransitionState !== 'holeVisible')) {
+            if (isLoadingQuestion || showQuestion || isHelpVisible || isEnteringCastle || (stageComplete && gameMode !== 'bonus' && bonusTransitionState !== 'holeVisible')) {
                 animationFrameId = requestAnimationFrame(gameLoop);
                 return;
             }

@@ -41,12 +41,30 @@ const QuestionModal: React.FC<QuestionModalProps> = ({ question, onAnswer }) => 
         return 'bg-gray-500 opacity-70'; // Otras respuestas incorrectas en gris
     };
 
+    const parseQuestion = (text: string) => {
+        const match = text.match(/(.*)(\s*\(.*\))$/);
+        if (match && match[1] && match[2]) {
+            return {
+                main: match[1].trim(),
+                detail: match[2].trim()
+            };
+        }
+        return { main: text, detail: null };
+    };
+
+    const { main, detail } = parseQuestion(question.question);
+
     return (
         <div className="absolute inset-0 bg-black bg-opacity-70 flex items-center justify-center z-40 p-4">
             <div className="w-full max-w-2xl bg-white rounded-2xl p-8 shadow-2xl border-8 border-vito-brown text-center">
-                <h2 className="text-3xl md:text-4xl font-bold text-gray-800 mb-6">
-                    {question.question}
+                <h2 className="text-3xl md:text-4xl font-bold text-gray-800 mb-2">
+                    {main}
                 </h2>
+                {detail && (
+                    <p className="text-base text-gray-400 font-normal mb-6">
+                        {detail}
+                    </p>
+                )}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     {question.options.map((option, index) => (
                         <button
