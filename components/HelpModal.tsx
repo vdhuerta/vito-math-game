@@ -1,4 +1,5 @@
 
+
 import React, { useState } from 'react';
 
 interface HelpModalProps {
@@ -8,41 +9,49 @@ interface HelpModalProps {
 const HelpModal: React.FC<HelpModalProps> = ({ onClose }) => {
     const [view, setView] = useState<'player' | 'teacher'>('player');
 
-    const renderPlayerHelp = () => (
-        <>
-            <h2 className="text-3xl md:text-4xl font-press-start text-vito-blue mb-6 text-center">¿Cómo Jugar?</h2>
-            <div className="space-y-4 text-gray-700 text-lg">
-                <div>
-                    <h3 className="font-bold text-xl text-vito-red">Objetivo</h3>
-                    <p>¡Ayuda a Vito a rescatar a la princesa! Resuelve acertijos matemáticos para avanzar por las etapas, derrotar enemigos y llegar al castillo final.</p>
+    const renderPlayerHelp = () => {
+        const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+        
+        return (
+            <>
+                <h2 className="text-3xl md:text-4xl font-press-start text-vito-blue mb-6 text-center">¿Cómo Jugar?</h2>
+                <div className="space-y-4 text-gray-700 text-lg">
+                    <div>
+                        <h3 className="font-bold text-xl text-vito-red">Objetivo</h3>
+                        <p>¡Ayuda a Vito a rescatar a la princesa! Resuelve acertijos matemáticos para avanzar por las etapas, derrotar enemigos y llegar al castillo final.</p>
+                    </div>
+                    <div>
+                        <h3 className="font-bold text-xl text-vito-red">Controles</h3>
+                        {isTouchDevice ? (
+                             <p className="list-disc list-inside ml-4">Usa los <strong>controles táctiles</strong> en la pantalla para moverte a la izquierda, derecha y para saltar.</p>
+                        ) : (
+                            <ul className="list-disc list-inside ml-4">
+                                <li><strong>Moverse:</strong> Usa las <strong>Flechas Izquierda y Derecha</strong>.</li>
+                                <li><strong>Saltar:</strong> Presiona la <strong>Barra Espaciadora</strong> o la <strong>Flecha Arriba</strong>.</li>
+                            </ul>
+                        )}
+                    </div>
+                    <div>
+                        <h3 className="font-bold text-xl text-vito-red">Elementos del Juego</h3>
+                        <ul className="list-disc list-inside ml-4 space-y-2">
+                            <li><strong>Bloques de Interrogación (?):</strong> ¡Golpéalos desde abajo! Cada bloque contiene un acertijo matemático. Si respondes bien, ganas puntos y el bloque se marca como resuelto.</li>
+                            <li><strong>Tortubits (Enemigos):</strong> Evita tocarlos o perderás una vida. ¡Sáltales encima para derrotarlos y ganar puntos extra!</li>
+                            <li><strong>Vidas:</strong> Comienzas con 3 vidas. Ganas una vida extra cada dos etapas completadas. ¡Cuidado! Si te quedas sin vidas, el juego termina.</li>
+                            <li><strong>Niveles de Bonus:</strong> Si resuelves todos los acertijos de una etapa, ¡se abrirá un nivel secreto! Recoge todas las gemas que puedas antes de que se acabe el tiempo.</li>
+                        </ul>
+                    </div>
                 </div>
-                <div>
-                    <h3 className="font-bold text-xl text-vito-red">Controles</h3>
-                    <ul className="list-disc list-inside ml-4">
-                        <li><strong>Moverse:</strong> Usa las <strong>Flechas Izquierda y Derecha</strong>.</li>
-                        <li><strong>Saltar:</strong> Presiona la <strong>Barra Espaciadora</strong> o la <strong>Flecha Arriba</strong>.</li>
-                    </ul>
+                <div className="text-center mt-8">
+                    <button
+                        onClick={() => setView('teacher')}
+                        className="bg-vito-green text-white font-bold py-2 px-6 rounded-full hover:bg-vito-yellow hover:text-black transition-transform transform hover:scale-110 text-xl"
+                    >
+                        Para el Profesor
+                    </button>
                 </div>
-                <div>
-                    <h3 className="font-bold text-xl text-vito-red">Elementos del Juego</h3>
-                    <ul className="list-disc list-inside ml-4 space-y-2">
-                        <li><strong>Bloques de Interrogación (?):</strong> ¡Golpéalos desde abajo! Cada bloque contiene un acertijo matemático. Si respondes bien, ganas puntos y el bloque se marca como resuelto.</li>
-                        <li><strong>Tortubits (Enemigos):</strong> Evita tocarlos o perderás una vida. ¡Sáltales encima para derrotarlos y ganar puntos extra!</li>
-                        <li><strong>Vidas:</strong> Comienzas con 3 vidas. Ganas una vida extra cada dos etapas completadas. ¡Cuidado! Si te quedas sin vidas, el juego termina.</li>
-                        <li><strong>Niveles de Bonus:</strong> Si resuelves todos los acertijos de una etapa, ¡se abrirá un nivel secreto! Recoge todas las gemas que puedas antes de que se acabe el tiempo.</li>
-                    </ul>
-                </div>
-            </div>
-            <div className="text-center mt-8">
-                <button
-                    onClick={() => setView('teacher')}
-                    className="bg-vito-green text-white font-bold py-2 px-6 rounded-full hover:bg-vito-yellow hover:text-black transition-transform transform hover:scale-110 text-xl"
-                >
-                    Para el Profesor
-                </button>
-            </div>
-        </>
-    );
+            </>
+        );
+    }
 
     const renderTeacherHelp = () => (
         <>

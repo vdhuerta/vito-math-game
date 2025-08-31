@@ -14,6 +14,7 @@ import Gem from './Gem';
 import Tortubit from './Tortubit';
 import HelpModal from './HelpModal';
 import { RedArrowIcon, CheckmarkIcon } from './icons';
+import OnScreenControls from './OnScreenControls';
 
 
 const GOAL_POSITION = 110;
@@ -496,14 +497,21 @@ const Game: React.FC<GameProps> = ({ level, onGameOver, onRestart }) => {
     }, [bonusTransitionState, level, stage, onGameOver, score, onRestart]);
 
 
+    const handleJump = useCallback(() => {
+        const canJump = isOnGround.current && !showQuestion && !isHelpVisible && (!stageComplete || gameMode !== 'normal');
+        if (canJump) {
+            playSound('jump');
+            playerVelocity.current.y = JUMP_FORCE;
+            isOnGround.current = false;
+        }
+    }, [showQuestion, isHelpVisible, stageComplete, gameMode]);
+
+
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             keysPressed.current[e.key] = true;
-            const canJump = isOnGround.current && !showQuestion && !isHelpVisible && (!stageComplete || gameMode !== 'normal');
-            if ((e.key === ' ' || e.key === 'ArrowUp') && canJump) {
-                playSound('jump');
-                playerVelocity.current.y = JUMP_FORCE;
-                isOnGround.current = false;
+            if ((e.key === ' ' || e.key === 'ArrowUp')) {
+                handleJump();
             }
         };
         const handleKeyUp = (e: KeyboardEvent) => {
@@ -515,7 +523,7 @@ const Game: React.FC<GameProps> = ({ level, onGameOver, onRestart }) => {
             window.removeEventListener('keydown', handleKeyDown);
             window.removeEventListener('keyup', handleKeyUp);
         };
-    }, [showQuestion, stageComplete, gameMode, isHelpVisible]);
+    }, [showQuestion, stageComplete, gameMode, isHelpVisible, handleJump]);
 
     useEffect(() => {
         let animationFrameId: number;
@@ -1068,6 +1076,8 @@ const Game: React.FC<GameProps> = ({ level, onGameOver, onRestart }) => {
                 </div>
             </div>
             
+            <OnScreenControls keysPressed={keysPressed} onJump={handleJump} />
+
             {/* Modals are outside the scrolling world container */}
             {isHelpVisible && <HelpModal onClose={toggleHelp} />}
             {showQuestion && currentQuestion && (
