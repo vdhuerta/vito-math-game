@@ -453,25 +453,8 @@ const Game: React.FC<GameProps> = ({ level, onGameOver, onRestart }) => {
                     const newOffset = prev + 2; // Adjust speed of transition
                     if (newOffset >= 100) {
                         clearInterval(fallInterval);
+                        setTransitionYOffset(100);
                         setBonusTransitionState('complete');
-                        setGameMode('bonus');
-                        playerPosition.current = { x: 5, y: GROUND_Y };
-                        playerVelocity.current = { x: 0, y: 0 };
-
-                        const bonusKey = `${level}-${stage}`;
-                        const config = BONUS_LEVEL_CONFIGS[bonusKey as keyof typeof BONUS_LEVEL_CONFIGS];
-
-                        if (config) {
-                            setGems(config.gems);
-                            setRockPlatforms(config.platforms);
-                        } else {
-                            setGems([]);
-                            setRockPlatforms([]);
-                        }
-                        
-                        setShowBonusInstructions(true);
-                        isPaused.current = true;
-
                         return 100;
                     }
                     return newOffset;
@@ -479,7 +462,30 @@ const Game: React.FC<GameProps> = ({ level, onGameOver, onRestart }) => {
             }, 16); // ~60fps
             return () => clearInterval(fallInterval);
         }
-    }, [bonusTransitionState, level, stage]);
+    }, [bonusTransitionState]);
+    
+    useEffect(() => {
+        // This effect runs *after* the falling transition is complete.
+        if (bonusTransitionState === 'complete' && gameMode !== 'bonus') {
+            setGameMode('bonus');
+            playerPosition.current = { x: 5, y: GROUND_Y };
+            playerVelocity.current = { x: 0, y: 0 };
+    
+            const bonusKey = `${level}-${stage}`;
+            const config = BONUS_LEVEL_CONFIGS[bonusKey as keyof typeof BONUS_LEVEL_CONFIGS];
+    
+            if (config) {
+                setGems(config.gems);
+                setRockPlatforms(config.platforms);
+            } else {
+                setGems([]);
+                setRockPlatforms([]);
+            }
+            
+            setShowBonusInstructions(true);
+            isPaused.current = true;
+        }
+    }, [bonusTransitionState, level, stage, gameMode]);
 
     useEffect(() => {
         if (bonusTransitionState === 'returning') {
