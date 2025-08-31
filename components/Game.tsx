@@ -284,12 +284,19 @@ const Game: React.FC<GameProps> = ({ level, onGameOver, onRestart }) => {
     const [rockPlatforms, setRockPlatforms] = useState<RockPlatformState[]>([]);
     const [bonusTransitionState, setBonusTransitionState] = useState<BonusTransitionState>('none');
     const [transitionYOffset, setTransitionYOffset] = useState(0);
+    const [showBonusInstructions, setShowBonusInstructions] = useState(false);
 
 
     const keysPressed = useRef<{ [key: string]: boolean }>({});
     const isHandlingAnswer = useRef(false);
+    const isPaused = useRef(false);
 
-    const toggleHelp = useCallback(() => setIsHelpVisible(v => !v), []);
+    const toggleHelp = useCallback(() => {
+        setIsHelpVisible(v => {
+            isPaused.current = !v;
+            return !v;
+        });
+    }, []);
     
     const displayMessage = (msg: string, duration: number = 2000) => {
         setGameMessage(msg);
@@ -384,6 +391,7 @@ const Game: React.FC<GameProps> = ({ level, onGameOver, onRestart }) => {
 
 
     const fetchQuestion = useCallback(async (blockId: number) => {
+        isPaused.current = true;
         isHandlingAnswer.current = false; // Reset guard for new question.
         setIsLoadingQuestion(true);
         setActiveQuestionBlock(blockId);
@@ -422,14 +430,21 @@ const Game: React.FC<GameProps> = ({ level, onGameOver, onRestart }) => {
         setBonusTransitionState('returning');
     }, []);
 
+    const handleStartBonus = () => {
+        setShowBonusInstructions(false);
+        setBonusTimer(BONUS_TIME_LIMIT);
+        isPaused.current = false;
+    };
+
+
     useEffect(() => {
-        if (gameMode === 'bonus' && bonusTimer > 0) {
+        if (gameMode === 'bonus' && bonusTimer > 0 && !isPaused.current) {
             const timerId = setTimeout(() => setBonusTimer(t => t - 1), 1000);
             return () => clearTimeout(timerId);
         } else if (gameMode === 'bonus' && bonusTimer === 0) {
             endBonusLevel();
         }
-    }, [gameMode, bonusTimer, endBonusLevel]);
+    }, [gameMode, bonusTimer, endBonusLevel, isPaused.current]);
 
     useEffect(() => {
         if (bonusTransitionState === 'falling') {
@@ -453,8 +468,10 @@ const Game: React.FC<GameProps> = ({ level, onGameOver, onRestart }) => {
                             setGems([]);
                             setRockPlatforms([]);
                         }
+                        
+                        setShowBonusInstructions(true);
+                        isPaused.current = true;
 
-                        setBonusTimer(BONUS_TIME_LIMIT);
                         return 100;
                     }
                     return newOffset;
@@ -498,17 +515,18 @@ const Game: React.FC<GameProps> = ({ level, onGameOver, onRestart }) => {
 
 
     const handleJump = useCallback(() => {
-        const canJump = isOnGround.current && !showQuestion && !isHelpVisible && (!stageComplete || gameMode !== 'normal');
+        const canJump = isOnGround.current && !isPaused.current && (!stageComplete || gameMode !== 'normal');
         if (canJump) {
             playSound('jump');
             playerVelocity.current.y = JUMP_FORCE;
             isOnGround.current = false;
         }
-    }, [showQuestion, isHelpVisible, stageComplete, gameMode]);
+    }, [stageComplete, gameMode]);
 
 
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
+            if (isPaused.current) return;
             keysPressed.current[e.key] = true;
             if ((e.key === ' ' || e.key === 'ArrowUp')) {
                 handleJump();
@@ -523,13 +541,13 @@ const Game: React.FC<GameProps> = ({ level, onGameOver, onRestart }) => {
             window.removeEventListener('keydown', handleKeyDown);
             window.removeEventListener('keyup', handleKeyUp);
         };
-    }, [showQuestion, stageComplete, gameMode, isHelpVisible, handleJump]);
+    }, [isPaused.current, handleJump]);
 
     useEffect(() => {
         let animationFrameId: number;
 
         const gameLoop = () => {
-            if (isLoadingQuestion || showQuestion || isHelpVisible || isEnteringCastle || (stageComplete && gameMode !== 'bonus' && bonusTransitionState !== 'holeVisible')) {
+            if (isPaused.current || isEnteringCastle || (stageComplete && gameMode !== 'bonus' && bonusTransitionState !== 'holeVisible')) {
                 animationFrameId = requestAnimationFrame(gameLoop);
                 return;
             }
@@ -758,7 +776,7 @@ const Game: React.FC<GameProps> = ({ level, onGameOver, onRestart }) => {
         };
         animationFrameId = requestAnimationFrame(gameLoop);
         return () => cancelAnimationFrame(animationFrameId);
-    }, [showQuestion, stageComplete, questionBlocks, platforms, fetchQuestion, isLoadingQuestion, gameMode, bonusTransitionState, rockPlatforms, handlePlayerHit, isInvincible, isEnteringCastle, score, onGameOver, isHelpVisible]);
+    }, [stageComplete, questionBlocks, platforms, fetchQuestion, isLoadingQuestion, gameMode, bonusTransitionState, rockPlatforms, handlePlayerHit, isInvincible, isEnteringCastle, score, onGameOver, showQuestion, isHelpVisible]);
     
     useEffect(() => {
         if (gameMode !== 'normal' || stageComplete) return;
@@ -802,7 +820,7 @@ const Game: React.FC<GameProps> = ({ level, onGameOver, onRestart }) => {
              } else {
                  displayMessage("¡Etapa Superada!", 2000);
 
-                 if (stage > 0 && stage % 2 === 0) {
+                 if (stage === 2 || stage === 4) {
                      setLives(l => l + 1);
                      const messageId = Date.now();
                      setExtraLifeMessage({ id: messageId, x: playerPosition.current.x, y: playerPosition.current.y });
@@ -909,6 +927,7 @@ const Game: React.FC<GameProps> = ({ level, onGameOver, onRestart }) => {
             
             setCurrentQuestion(null);
             setActiveQuestionBlock(null);
+            isPaused.current = false;
         }, 1500);
     };
 
@@ -1079,6 +1098,20 @@ const Game: React.FC<GameProps> = ({ level, onGameOver, onRestart }) => {
             <OnScreenControls keysPressed={keysPressed} onJump={handleJump} />
 
             {/* Modals are outside the scrolling world container */}
+            {showBonusInstructions && (
+                <div className="absolute inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4 font-fredoka">
+                    <div className="bg-white p-8 rounded-2xl shadow-2xl text-center border-8 border-vito-yellow w-full max-w-lg">
+                        <h2 className="text-4xl font-press-start text-vito-blue mb-4" style={{ textShadow: '2px 2px #000' }}>¡Cueva de Gemas!</h2>
+                        <p className="text-xl text-gray-700 mb-6">¡Atrapa todas las gemas que puedas en <strong>{BONUS_TIME_LIMIT} segundos</strong>!</p>
+                        <button
+                            onClick={handleStartBonus}
+                            className="bg-vito-green text-white font-bold py-3 px-8 rounded-full hover:bg-vito-yellow hover:text-black transition-transform transform hover:scale-110 text-2xl"
+                        >
+                            ¡OK!
+                        </button>
+                    </div>
+                </div>
+            )}
             {isHelpVisible && <HelpModal onClose={toggleHelp} />}
             {showQuestion && currentQuestion && (
                 <QuestionModal question={currentQuestion} onAnswer={handleAnswer} />
