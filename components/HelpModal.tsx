@@ -1,8 +1,4 @@
-
-
-
-import React, { useState, useEffect } from 'react';
-import { setVolume, getVolume } from '../services/audioService';
+import React, { useState } from 'react';
 
 interface HelpModalProps {
     onClose: () => void;
@@ -10,17 +6,6 @@ interface HelpModalProps {
 
 const HelpModal: React.FC<HelpModalProps> = ({ onClose }) => {
     const [view, setView] = useState<'player' | 'teacher'>('player');
-    const [volume, setVolumeState] = useState(1);
-
-    useEffect(() => {
-        setVolumeState(getVolume());
-    }, []);
-
-    const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const newVolume = parseFloat(e.target.value);
-        setVolumeState(newVolume);
-        setVolume(newVolume);
-    };
 
     const renderPlayerHelp = () => {
         const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
@@ -52,22 +37,6 @@ const HelpModal: React.FC<HelpModalProps> = ({ onClose }) => {
                             <li><strong>Vidas:</strong> Comienzas con 3 vidas. Ganas una vida extra cada dos etapas completadas. ¡Cuidado! Si te quedas sin vidas, el juego termina.</li>
                             <li><strong>Niveles de Bonus:</strong> Si resuelves todos los acertijos de una etapa, ¡se abrirá un nivel secreto! Recoge todas las gemas que puedas antes de que se acabe el tiempo.</li>
                         </ul>
-                    </div>
-                    <div>
-                        <h3 className="font-bold text-xl text-vito-red mt-6">Ajustes de Sonido</h3>
-                        <div className="flex items-center gap-4 mt-2">
-                            <label htmlFor="volume-slider" className="text-lg">Volumen:</label>
-                            <input
-                                id="volume-slider"
-                                type="range"
-                                min="0"
-                                max="1"
-                                step="0.01"
-                                value={volume}
-                                onChange={handleVolumeChange}
-                                className="w-full accent-vito-blue"
-                            />
-                        </div>
                     </div>
                 </div>
                 <div className="text-center mt-8">

@@ -6,6 +6,9 @@ let musicGain: GainNode | null = null;
 let musicSource: AudioBufferSourceNode | null = null;
 const soundBuffers = new Map<string, AudioBuffer>();
 
+let isMuted = false;
+let volumeBeforeMute = 1;
+
 const BASE_URL = 'https://raw.githubusercontent.com/vdhuerta/assets-aplications/main/';
 
 export const soundSources = {
@@ -21,6 +24,7 @@ export const soundSources = {
   incorrectAnswer: `${BASE_URL}Respuesta_Incorrecta.mp3`,
   music: `${BASE_URL}Vito_Music2.mp3`,
   gemCaveMessage: `${BASE_URL}Alerta_Msg_Gemas.mp3`,
+  levelComplete: `${BASE_URL}Fin_Nivel.mp3`,
 };
 
 type SoundName = keyof typeof soundSources;
@@ -97,10 +101,32 @@ export const stopMusic = () => {
 
 export const setVolume = (volume: number) => {
   if (masterGain) {
-    masterGain.gain.value = Math.max(0, Math.min(1, volume));
+    const newVolume = Math.max(0, Math.min(1, volume));
+    masterGain.gain.value = newVolume;
+    isMuted = newVolume === 0;
+    if (!isMuted) {
+      volumeBeforeMute = newVolume;
+    }
   }
 };
 
 export const getVolume = (): number => {
   return masterGain ? masterGain.gain.value : 1;
+};
+
+export const toggleMute = () => {
+    if (!masterGain) return;
+    isMuted = !isMuted;
+    if (isMuted) {
+        if (masterGain.gain.value > 0) {
+            volumeBeforeMute = masterGain.gain.value;
+        }
+        masterGain.gain.value = 0;
+    } else {
+        masterGain.gain.value = volumeBeforeMute;
+    }
+};
+
+export const getMuteState = (): boolean => {
+    return isMuted;
 };

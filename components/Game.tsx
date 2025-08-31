@@ -2,6 +2,7 @@
 
 
 
+
 import React, { useState, useEffect, useCallback, useRef, useReducer } from 'react';
 import { GameLevel, Question, QuestionBlockState, PlatformState, GemState, RockPlatformState, TortubitState } from '../types';
 import { generateQuestion } from '../services/geminiService';
@@ -271,6 +272,7 @@ const Game: React.FC<GameProps> = ({ level, onGameOver, onRestart }) => {
     const [isHelpVisible, setIsHelpVisible] = useState(false);
     const [showBonusInfoModal, setShowBonusInfoModal] = useState(false);
     const [bonusInfoShown, setBonusInfoShown] = useState(false);
+    const [showLevelCompleteModal, setShowLevelCompleteModal] = useState(false);
     
     const [questionBlocks, setQuestionBlocks] = useState<QuestionBlockState[]>([]);
     const [platforms, setPlatforms] = useState<PlatformState[]>([]);
@@ -500,18 +502,22 @@ const Game: React.FC<GameProps> = ({ level, onGameOver, onRestart }) => {
                     const newOffset = prev - 2; // Animate upwards
                     if (newOffset <= 0) {
                         clearInterval(returnInterval);
+                        
+                        // Common state reset after transition animation
                         playMusic();
                         setGameMode('normal');
                         playerPosition.current = { x: BONUS_HOLE_X + 2, y: GROUND_Y };
-                        setBonusTransitionState('none'); // Reset state
+                        setBonusTransitionState('none');
                         
                         const isFinalBonus = (level === GameLevel.FirstGrade || level === GameLevel.SecondGrade) && stage === 6;
                         
                         if (isFinalBonus) {
-                            displayMessage("¡Nivel Completado!", 3000);
-                            setTimeout(() => onRestart(), 3000);
+                            stopMusic(); // Stop music for victory screen
+                            playSound('levelComplete');
+                            setShowLevelCompleteModal(true);
+                            isPaused.current = true;
                         } else {
-                            // This handles stage 1-3, 2-3, 3-3, and 3-5 bonuses
+                            // This handles all other non-final bonuses
                             setTimeout(() => {
                                setStage(s => s + 1);
                             }, 500); 
@@ -524,7 +530,7 @@ const Game: React.FC<GameProps> = ({ level, onGameOver, onRestart }) => {
             }, 16); // ~60fps
             return () => clearInterval(returnInterval);
         }
-    }, [bonusTransitionState, level, stage, onGameOver, score, onRestart]);
+    }, [bonusTransitionState, level, stage, onRestart]);
 
 
     const handleJump = useCallback(() => {
@@ -1136,6 +1142,24 @@ const Game: React.FC<GameProps> = ({ level, onGameOver, onRestart }) => {
                             className="bg-vito-blue text-white font-bold py-3 px-8 rounded-full hover:bg-blue-600 transition-transform transform hover:scale-110 text-2xl"
                         >
                             ¡OK!
+                        </button>
+                    </div>
+                </div>
+            )}
+            {showLevelCompleteModal && (
+                <div className="absolute inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4 font-fredoka">
+                    <div className="w-full max-w-lg bg-white rounded-2xl p-8 shadow-2xl border-8 border-vito-yellow text-center">
+                        <h2 className="text-3xl md:text-4xl font-press-start text-vito-green mb-4">¡NIVEL SUPERADO!</h2>
+                        <p className="text-xl text-gray-700 mb-6">
+                            ¡Felicidades! Has demostrado ser un experto en el {level === GameLevel.FirstGrade ? 'primer' : 'segundo'} grado.
+                            <br/><br/>
+                            ¡Sigue adelante con el siguiente nivel!
+                        </p>
+                        <button
+                            onClick={onRestart}
+                            className="bg-vito-blue text-white font-bold py-3 px-8 rounded-full hover:bg-blue-600 transition-transform transform hover:scale-110 text-2xl"
+                        >
+                            Volver
                         </button>
                     </div>
                 </div>
