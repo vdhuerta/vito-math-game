@@ -1,77 +1,105 @@
+// services/audioService.ts
+
 let audioContext: AudioContext | null = null;
-const soundBuffers: { [key: string]: AudioBuffer } = {};
+let masterGain: GainNode | null = null;
+let musicGain: GainNode | null = null;
+let musicSource: AudioBufferSourceNode | null = null;
+const soundBuffers = new Map<string, AudioBuffer>();
+
+const BASE_URL = 'https://raw.githubusercontent.com/vdhuerta/assets-aplications/main/';
 
 export const soundSources = {
-    jump: 'https://storage.googleapis.com/hume-rick-assets/mario-jump-sound.mp3',
-    correct: 'https://storage.googleapis.com/hume-rick-assets/mario-coin-sound.mp3',
-    incorrect: 'https://storage.googleapis.com/hume-rick-assets/mario-pipe-sound.mp3',
-    victory: 'https://storage.googleapis.com/hume-rick-assets/level-clear-sound.mp3',
-    bonusStart: 'https://storage.googleapis.com/hume-rick-assets/power-up-appears-sound.mp3',
-    gem: 'https://storage.googleapis.com/hume-rick-assets/mario-coin-sound.mp3',
-    stomp: 'https://storage.googleapis.com/hume-rick-assets/stomp-sound.mp3',
-    hitBlock: 'https://storage.googleapis.com/hume-rick-assets/block-hit-sound.mp3',
-    gameOver: 'https://storage.googleapis.com/hume-rick-assets/game-over-sound.mp3',
+  hitBlock: `${BASE_URL}Activar_Acertijo2.mp3`,
+  gameOver: `${BASE_URL}Fin_del_Juego.mp3`,
+  bonusLevel: `${BASE_URL}Game_Bonus.mp3`,
+  startStage: `${BASE_URL}Iniciar_Etapa.mp3`,
+  collectGem: `${BASE_URL}Gemas.mp3`,
+  jump: `${BASE_URL}Jump_Vito.mp3`,
+  defeatEnemy: `${BASE_URL}Matar_TortuBit.mp3`,
+  loseLife: `${BASE_URL}Pierde_Vida2.mp3`,
+  correctAnswer: `${BASE_URL}Respuesta_Correcta.mp3`,
+  incorrectAnswer: `${BASE_URL}Respuesta_Incorrecta.mp3`,
+  music: `${BASE_URL}Vito_Music2.mp3`,
 };
 
-const soundVolumes: { [key: string]: number } = {
-    jump: 0.5, correct: 0.5, incorrect: 0.5,
-    victory: 0.6, bonusStart: 0.5, gem: 0.7, stomp: 0.6,
-    hitBlock: 0.5, gameOver: 0.7
+type SoundName = keyof typeof soundSources;
+
+const loadSound = async (name: string, url: string) => {
+  if (!audioContext) return;
+  try {
+    const response = await fetch(url);
+    const arrayBuffer = await response.arrayBuffer();
+    const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+    soundBuffers.set(name, audioBuffer);
+  } catch (error) {
+    console.error(`Error al cargar el sonido: ${name}`, error);
+  }
 };
 
 export const initAudio = async () => {
-    if (audioContext && audioContext.state !== 'closed') {
-        if (audioContext.state === 'suspended') {
-            try {
-                await audioContext.resume();
-            } catch (e) {
-                console.error("Audio context resume failed.", e);
-            }
-        }
-        return;
-    }
-    try {
-        audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-        
-        const soundPromises = Object.entries(soundSources).map(async ([name, url]) => {
-            if (soundBuffers[name]) return;
-            try {
-                const response = await fetch(url);
-                const arrayBuffer = await response.arrayBuffer();
-                if (audioContext) {
-                    const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-                    soundBuffers[name] = audioBuffer;
-                }
-            } catch (loadError) {
-                console.error(`Failed to load sound: ${name}`, loadError);
-            }
-        });
-        
-        await Promise.all(soundPromises);
+  if (audioContext) return;
+  try {
+    audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+    masterGain = audioContext.createGain();
+    masterGain.connect(audioContext.destination);
 
-    } catch (e) {
-        console.error("Failed to initialize Web Audio API", e);
-        audioContext = null;
-    }
+    musicGain = audioContext.createGain();
+    musicGain.connect(masterGain);
+    musicGain.gain.value = 0.3; // Música al 30% del volumen maestro
+
+    const loadPromises = Object.entries(soundSources).map(([name, url]) => loadSound(name, url));
+    await Promise.all(loadPromises);
+    console.log("Todos los sonidos han sido cargados.");
+  } catch (e) {
+    console.error("La Web Audio API no es compatible o el usuario no ha interactuado con la página.", e);
+  }
 };
 
-export const playSound = (name: keyof typeof soundSources) => {
-    if (!audioContext || !soundBuffers[name]) {
-        console.warn(`Sound not ready or not found: ${name}`);
-        return;
-    }
-    
-    if (audioContext.state === 'suspended') {
-        audioContext.resume().catch(e => console.error("Audio resume failed on play", e));
-    }
-    
+export const playSound = (name: SoundName) => {
+  if (!audioContext || !masterGain) return;
+  if (audioContext.state === 'suspended') {
+    audioContext.resume();
+  }
+  
+  const buffer = soundBuffers.get(name);
+  if (buffer) {
     const source = audioContext.createBufferSource();
-    source.buffer = soundBuffers[name];
-    
-    const gainNode = audioContext.createGain();
-    gainNode.gain.value = soundVolumes[name] || 0.5;
-    
-    source.connect(gainNode);
-    gainNode.connect(audioContext.destination);
+    source.buffer = buffer;
+    source.connect(masterGain);
     source.start(0);
+  }
+};
+
+export const playMusic = () => {
+  if (!audioContext || !musicGain || musicSource) return;
+  if (audioContext.state === 'suspended') {
+    audioContext.resume();
+  }
+  
+  const buffer = soundBuffers.get('music');
+  if (buffer) {
+    musicSource = audioContext.createBufferSource();
+    musicSource.buffer = buffer;
+    musicSource.loop = true;
+    musicSource.connect(musicGain);
+    musicSource.start(0);
+  }
+};
+
+export const stopMusic = () => {
+  if (musicSource) {
+    musicSource.stop();
+    musicSource.disconnect();
+    musicSource = null;
+  }
+};
+
+export const setVolume = (volume: number) => {
+  if (masterGain) {
+    masterGain.gain.value = Math.max(0, Math.min(1, volume));
+  }
+};
+
+export const getVolume = (): number => {
+  return masterGain ? masterGain.gain.value : 1;
 };

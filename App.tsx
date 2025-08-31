@@ -1,8 +1,9 @@
+
 import React, { useState, useCallback } from 'react';
 import Game from './components/Game';
 import StartScreen from './components/StartScreen';
 import { GameLevel } from './types';
-import { initAudio } from './services/audioService';
+import { initAudio, playMusic, stopMusic, playSound } from './services/audioService';
 
 const App: React.FC = () => {
     const [gameState, setGameState] = useState<'start' | 'playing' | 'gameOver'>('start');
@@ -10,18 +11,23 @@ const App: React.FC = () => {
     const [score, setScore] = useState(0);
 
     const handleStartGame = useCallback((selectedLevel: GameLevel) => {
-        initAudio();
+        initAudio().then(() => {
+            playMusic();
+        });
         setLevel(selectedLevel);
         setScore(0);
         setGameState('playing');
     }, []);
 
     const handleGameOver = useCallback((finalScore: number) => {
+        stopMusic();
+        playSound('gameOver');
         setScore(finalScore);
         setGameState('gameOver');
     }, []);
 
     const handleRestart = useCallback(() => {
+        stopMusic();
         setGameState('start');
     }, []);
 

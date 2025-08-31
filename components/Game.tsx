@@ -1,9 +1,11 @@
 
 
+
+
 import React, { useState, useEffect, useCallback, useRef, useReducer } from 'react';
 import { GameLevel, Question, QuestionBlockState, PlatformState, GemState, RockPlatformState, TortubitState } from '../types';
 import { generateQuestion } from '../services/geminiService';
-import { playSound } from '../services/audioService';
+import { playSound, stopMusic, playMusic } from '../services/audioService';
 import QuestionModal from './QuestionModal';
 import HUD from './HUD';
 import Player from './Player';
@@ -331,6 +333,7 @@ const Game: React.FC<GameProps> = ({ level, onGameOver, onRestart }) => {
         const config = STAGE_CONFIG[level][currentStage - 1];
         if (!config) return;
 
+        playSound('startStage');
         setPlatforms(config.platforms || []);
         
         const newQuestionBlocks = config.questions.map((q, i) => ({
@@ -393,6 +396,7 @@ const Game: React.FC<GameProps> = ({ level, onGameOver, onRestart }) => {
 
 
     const fetchQuestion = useCallback(async (blockId: number) => {
+        playSound('hitBlock');
         isPaused.current = true;
         isHandlingAnswer.current = false; // Reset guard for new question.
         setIsLoadingQuestion(true);
@@ -405,7 +409,7 @@ const Game: React.FC<GameProps> = ({ level, onGameOver, onRestart }) => {
 
     const handlePlayerHit = useCallback(() => {
         if (isInvincible) return;
-        playSound('incorrect');
+        playSound('loseLife');
         setIsInvincible(true);
         displayMessage("¡Ay!", 1500);
         playerPosition.current = {...playerPosition.current, x: Math.max(playerPosition.current.x - 10, 0)};
@@ -414,7 +418,6 @@ const Game: React.FC<GameProps> = ({ level, onGameOver, onRestart }) => {
         setLives(l => {
             const newLives = l - 1;
             if (newLives <= 0) {
-                playSound('gameOver');
                 setTimeout(() => onGameOver(score), 500);
             }
             return newLives;
@@ -423,6 +426,8 @@ const Game: React.FC<GameProps> = ({ level, onGameOver, onRestart }) => {
     }, [isInvincible, onGameOver, score]);
 
     const startBonusTransition = useCallback(() => {
+        stopMusic();
+        playSound('bonusLevel');
         setStageComplete(true);
         setBonusTransitionState('holeVisible');
     }, []);
@@ -494,6 +499,7 @@ const Game: React.FC<GameProps> = ({ level, onGameOver, onRestart }) => {
                     const newOffset = prev - 2; // Animate upwards
                     if (newOffset <= 0) {
                         clearInterval(returnInterval);
+                        playMusic();
                         setGameMode('normal');
                         playerPosition.current = { x: BONUS_HOLE_X + 2, y: GROUND_Y };
                         setBonusTransitionState('none'); // Reset state
@@ -591,7 +597,7 @@ const Game: React.FC<GameProps> = ({ level, onGameOver, onRestart }) => {
                         const isStomp = isFalling && playerRect.bottom >= tortubitRect.top - 3;
 
                         if (isStomp) {
-                            playSound('stomp');
+                            playSound('defeatEnemy');
                             playerVelocity.current.y = DEFEAT_BOUNCE_FORCE;
                             setScore(s => s + TORTUBIT_KILL_POINTS);
 
@@ -691,7 +697,6 @@ const Game: React.FC<GameProps> = ({ level, onGameOver, onRestart }) => {
                             playerVelocity.current.y = 0;
                             newPos.y = blockBottom - PLAYER_HEIGHT;
                             if (!showQuestion && !isLoadingQuestion) {
-                                playSound('hitBlock');
                                 fetchQuestion(block.id);
                             }
                         } else if (playerBottom < blockTop && playerPosition.current.y >= blockTop && playerVelocity.current.y < 0) {
@@ -745,7 +750,6 @@ const Game: React.FC<GameProps> = ({ level, onGameOver, onRestart }) => {
             if (bonusTransitionState === 'holeVisible' && newPos.x > BONUS_HOLE_X && newPos.x < (BONUS_HOLE_X + BONUS_HOLE_WIDTH - PLAYER_WIDTH)) {
                  if (newPos.y < GROUND_Y) {
                     setBonusTransitionState('falling');
-                    playSound('bonusStart');
                 }
             }
 
@@ -813,7 +817,6 @@ const Game: React.FC<GameProps> = ({ level, onGameOver, onRestart }) => {
 
         if (playerPosition.current.x >= GOAL_POSITION) {
              setStageComplete(true);
-             playSound('victory');
              
              const isFinalStageOfGame = level === GameLevel.ThirdGrade && stage === STAGES_PER_LEVEL;
 
@@ -859,7 +862,6 @@ const Game: React.FC<GameProps> = ({ level, onGameOver, onRestart }) => {
             setIsEnteringCastle(true);
             playerVelocity.current.x = 0;
             keysPressed.current = {}; // Disable controls
-            playSound('victory');
             displayMessage("¡Juego Completado!", 3000);
             setTimeout(() => onGameOver(score + 5000), 2000);
         }
@@ -881,7 +883,7 @@ const Game: React.FC<GameProps> = ({ level, onGameOver, onRestart }) => {
             const gemTop = gem.position.y + GEM_HEIGHT;
 
             if (playerRight > gemLeft && playerLeft < gemRight && playerTop > gemBottom && playerBottom < gemTop) {
-                playSound('gem');
+                playSound('collectGem');
                 setScore(s => s + GEM_VALUE);
                 setGems(g => g.filter(g => g.id !== gem.id));
             }
@@ -893,8 +895,11 @@ const Game: React.FC<GameProps> = ({ level, onGameOver, onRestart }) => {
         if (isHandlingAnswer.current) return;
         isHandlingAnswer.current = true;
     
-        if (isCorrect) playSound('correct');
-        else playSound('incorrect');
+        if (isCorrect) {
+            playSound('correctAnswer');
+        } else {
+            playSound('incorrectAnswer');
+        }
 
         const answeredBlock = questionBlocks.find(b => b.id === activeQuestionBlock);
 
@@ -940,7 +945,6 @@ const Game: React.FC<GameProps> = ({ level, onGameOver, onRestart }) => {
     const handleCloseBonusInfo = () => {
         setShowBonusInfoModal(false);
         isPaused.current = false;
-        playSound('correct');
     };
 
     const isGameVisible = !isLoadingQuestion && !showQuestion;

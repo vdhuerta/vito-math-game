@@ -51,10 +51,10 @@ const HUD: React.FC<HUDProps> = ({ lives, score, level, stage, bonusTimer, gameM
                 <span>PUNTOS: {score.toString().padStart(4, '0')}</span>
                 <button
                     onClick={onToggleHelp}
-                    className="bg-vito-yellow text-black w-10 h-10 flex items-center justify-center rounded-full border-2 border-black/50 shadow-lg transform hover:scale-110 active:scale-95 transition-all"
+                    className="bg-yellow-400 text-yellow-800 w-10 h-10 flex items-center justify-center rounded-md border-4 border-yellow-600 shadow-lg animate-coin"
                     title="Ayuda"
                 >
-                    <span className="text-2xl">?</span>
+                    <span className="text-3xl font-bold">?</span>
                 </button>
                 <button
                     onClick={onRestart}
