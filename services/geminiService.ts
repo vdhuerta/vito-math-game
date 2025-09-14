@@ -178,7 +178,6 @@ export const generateQuestion = async (level: GameLevel): Promise<Question> => {
         };
     }
     
-    let responseText = '';
     try {
         const problemType = problemTypes[Math.floor(Math.random() * problemTypes.length)];
         const { n1, n2, answer } = problemType.generateOperands(level);
@@ -223,11 +222,10 @@ export const generateQuestion = async (level: GameLevel): Promise<Question> => {
             config: {
                 responseMimeType: "application/json",
                 responseSchema: responseSchema,
-                temperature: 0.5, // Reducida para una salida JSON más fiable
             },
         });
         
-        responseText = response.text.trim();
+        const responseText = response.text.trim();
         const parsedQuestion = JSON.parse(responseText) as Question;
 
         if (parsedQuestion.answer !== answer) {
@@ -244,7 +242,6 @@ export const generateQuestion = async (level: GameLevel): Promise<Question> => {
 
     } catch (error) {
         console.error("Error al generar pregunta desde Gemini API:", error);
-        console.error("Texto de respuesta recibido que causó el error:", responseText); // Loguear la respuesta cruda
         const fallbackAnswer = level === 1 ? 4 : level === 2 ? 30 : 150;
         return {
             question: `¿${fallbackAnswer-2} + 2 = ? (Error API)`,
