@@ -222,6 +222,7 @@ export const generateQuestion = async (level: GameLevel): Promise<Question> => {
             config: {
                 responseMimeType: "application/json",
                 responseSchema: responseSchema,
+                thinkingConfig: { thinkingBudget: 0 },
             },
         });
         
