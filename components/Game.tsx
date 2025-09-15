@@ -3,6 +3,7 @@
 
 
 
+
 import React, { useState, useEffect, useCallback, useRef, useReducer } from 'react';
 import { GameLevel, Question, QuestionBlockState, PlatformState, GemState, RockPlatformState, TortubitState } from '../types';
 import { generateQuestion } from '../services/geminiService';
@@ -261,12 +262,15 @@ const Game: React.FC<GameProps> = ({ level, onGameOver, onRestart }) => {
     
     const [_, forceUpdate] = useReducer(x => x + 1, 0);
 
+    // --- State for question pre-loading ---
+    const [isStageLoading, setIsStageLoading] = useState(true);
+    const [stageLoadError, setStageLoadError] = useState<string | null>(null);
+    const [preloadedQuestions, setPreloadedQuestions] = useState<Question[]>([]);
 
     const [isInvincible, setIsInvincible] = useState(false);
     const [showQuestion, setShowQuestion] = useState(false);
     const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null);
     const [activeQuestionBlock, setActiveQuestionBlock] = useState<number | null>(null);
-    const [isLoadingQuestion, setIsLoadingQuestion] = useState(false);
     const [gameMessage, setGameMessage] = useState<string | null>(null);
     const [stageComplete, setStageComplete] = useState(false);
     const [isHelpVisible, setIsHelpVisible] = useState(false);
@@ -331,54 +335,80 @@ const Game: React.FC<GameProps> = ({ level, onGameOver, onRestart }) => {
         displayMessage("¡Camino al Castillo!", 2000);
     }, []);
 
-    const setupStage = useCallback((currentStage: number) => {
+    const setupStage = useCallback(async (currentStage: number) => {
+        setIsStageLoading(true);
+        setStageLoadError(null);
+        isPaused.current = true;
+    
         const config = STAGE_CONFIG[level][currentStage - 1];
-        if (!config) return;
-
-        playSound('startStage');
-        setPlatforms(config.platforms || []);
-        
-        const newQuestionBlocks = config.questions.map((q, i) => ({
-            id: i + 1,
-            position: { x: q.x, y: q.y },
-            cleared: false,
-        }));
-        setQuestionBlocks(newQuestionBlocks);
-
-        let tortubitSpeed = TORTUBIT_DEFAULT_SPEED;
-        if (level === GameLevel.ThirdGrade) {
-            tortubitSpeed = TORTUBIT_LEVEL3_SPEED;
-        } else if (level === GameLevel.SecondGrade) {
-            tortubitSpeed = TORTUBIT_LEVEL2_SPEED;
-        } else if (level === GameLevel.FirstGrade) {
-            const fastStages = [3, 4, 5, 6];
-            if (fastStages.includes(currentStage)) {
-                tortubitSpeed = TORTUBIT_FAST_SPEED;
-            }
+        if (!config) {
+            setStageLoadError("Configuración de etapa no encontrada.");
+            setIsStageLoading(false);
+            return;
         }
-
-        const newTortubits = (config.tortubits || []).map(t => ({
-            ...t,
-            position: { x: t.initialX },
-            isDefeated: false,
-            speed: tortubitSpeed,
-            spawned: false, // Start as not spawned
-        }));
-        tortubits.current = newTortubits as TortubitState[];
-
-
-        playerPosition.current = { x: 10, y: GROUND_Y };
-        playerVelocity.current = { x: 0, y: 0 };
-        setStageComplete(false);
-        setIsEnteringCastle(false);
-        setGameMode('normal');
-        setBonusTransitionState('none');
-        setTransitionYOffset(0);
-        setGems([]);
-        setRockPlatforms([]);
-        setBonusInfoShown(false);
-        displayMessage(`Etapa ${level}-${currentStage}`, 2000);
-
+    
+        try {
+            const numQuestions = config.questions.length;
+            if (numQuestions > 0) {
+                const questionPromises = Array.from({ length: numQuestions }, () => generateQuestion(level));
+                const questions = await Promise.all(questionPromises);
+                setPreloadedQuestions(questions);
+            } else {
+                setPreloadedQuestions([]);
+            }
+            
+            // --- Si la carga es exitosa, configurar el resto de la etapa ---
+            playSound('startStage');
+            setPlatforms(config.platforms || []);
+            
+            const newQuestionBlocks = config.questions.map((q, i) => ({
+                id: i + 1,
+                position: { x: q.x, y: q.y },
+                cleared: false,
+            }));
+            setQuestionBlocks(newQuestionBlocks);
+    
+            let tortubitSpeed = TORTUBIT_DEFAULT_SPEED;
+            if (level === GameLevel.ThirdGrade) {
+                tortubitSpeed = TORTUBIT_LEVEL3_SPEED;
+            } else if (level === GameLevel.SecondGrade) {
+                tortubitSpeed = TORTUBIT_LEVEL2_SPEED;
+            } else if (level === GameLevel.FirstGrade) {
+                const fastStages = [3, 4, 5, 6];
+                if (fastStages.includes(currentStage)) {
+                    tortubitSpeed = TORTUBIT_FAST_SPEED;
+                }
+            }
+    
+            const newTortubits = (config.tortubits || []).map(t => ({
+                ...t,
+                position: { x: t.initialX },
+                isDefeated: false,
+                speed: tortubitSpeed,
+                spawned: false,
+            }));
+            tortubits.current = newTortubits as TortubitState[];
+    
+            playerPosition.current = { x: 10, y: GROUND_Y };
+            playerVelocity.current = { x: 0, y: 0 };
+            setStageComplete(false);
+            setIsEnteringCastle(false);
+            setGameMode('normal');
+            setBonusTransitionState('none');
+            setTransitionYOffset(0);
+            setGems([]);
+            setRockPlatforms([]);
+            setBonusInfoShown(false);
+            displayMessage(`Etapa ${level}-${currentStage}`, 2000);
+    
+            setIsStageLoading(false);
+            isPaused.current = false;
+    
+        } catch (error) {
+            console.error("Error al precargar las preguntas de la etapa:", error);
+            setStageLoadError("Error al cargar las preguntas. Revisa tu conexión o la clave de API.");
+            setIsStageLoading(false);
+        }
     }, [level]);
 
     useEffect(() => {
@@ -388,26 +418,30 @@ const Game: React.FC<GameProps> = ({ level, onGameOver, onRestart }) => {
 
     // Effect to spawn tortubits after a delay
     useEffect(() => {
-        if (stage > 0) { // To avoid running on initial mount before stage is set
+        if (stage > 0 && !isStageLoading && !stageLoadError) {
             const timer = setTimeout(() => {
                 tortubits.current = tortubits.current.map(t => ({ ...t, spawned: true }));
             }, 3000);
             return () => clearTimeout(timer);
         }
-    }, [stage]);
+    }, [stage, isStageLoading, stageLoadError]);
 
 
-    const fetchQuestion = useCallback(async (blockId: number) => {
+    const triggerQuestion = useCallback((blockId: number) => {
         playSound('hitBlock');
         isPaused.current = true;
-        isHandlingAnswer.current = false; // Reset guard for new question.
-        setIsLoadingQuestion(true);
+        isHandlingAnswer.current = false;
         setActiveQuestionBlock(blockId);
-        const question = await generateQuestion(level);
-        setCurrentQuestion(question);
-        setShowQuestion(true);
-        setIsLoadingQuestion(false);
-    }, [level]);
+
+        const questionForBlock = preloadedQuestions[blockId - 1];
+        if (questionForBlock) {
+            setCurrentQuestion(questionForBlock);
+            setShowQuestion(true);
+        } else {
+            console.error(`No se encontró la pregunta precargada para el bloque ${blockId}`);
+            isPaused.current = false; // Unpause if question fails
+        }
+    }, [preloadedQuestions]);
 
     const handlePlayerHit = useCallback(() => {
         if (isInvincible) return;
@@ -703,8 +737,8 @@ const Game: React.FC<GameProps> = ({ level, onGameOver, onRestart }) => {
                         if (playerTop > blockBottom && playerPosition.current.y + PLAYER_HEIGHT <= blockBottom && playerVelocity.current.y > 0 && !block.cleared) {
                             playerVelocity.current.y = 0;
                             newPos.y = blockBottom - PLAYER_HEIGHT;
-                            if (!showQuestion && !isLoadingQuestion) {
-                                fetchQuestion(block.id);
+                            if (!showQuestion) {
+                                triggerQuestion(block.id);
                             }
                         } else if (playerBottom < blockTop && playerPosition.current.y >= blockTop && playerVelocity.current.y < 0) {
                             newPos.y = blockTop;
@@ -793,7 +827,7 @@ const Game: React.FC<GameProps> = ({ level, onGameOver, onRestart }) => {
         };
         animationFrameId = requestAnimationFrame(gameLoop);
         return () => cancelAnimationFrame(animationFrameId);
-    }, [stageComplete, questionBlocks, platforms, fetchQuestion, isLoadingQuestion, gameMode, bonusTransitionState, rockPlatforms, handlePlayerHit, isInvincible, isEnteringCastle, score, onGameOver, showQuestion, isHelpVisible]);
+    }, [stageComplete, questionBlocks, platforms, triggerQuestion, gameMode, bonusTransitionState, rockPlatforms, handlePlayerHit, isInvincible, isEnteringCastle, score, onGameOver, showQuestion, isHelpVisible]);
     
     useEffect(() => {
         if (gameMode !== 'normal' || stageComplete) return;
@@ -953,8 +987,31 @@ const Game: React.FC<GameProps> = ({ level, onGameOver, onRestart }) => {
         setShowBonusInfoModal(false);
         isPaused.current = false;
     };
+    
+    if (isStageLoading) {
+        return (
+            <div className="w-full h-full bg-vito-blue flex items-center justify-center">
+                <p className="text-white text-4xl font-press-start animate-pulse">Preparando la etapa...</p>
+            </div>
+        );
+    }
 
-    const isGameVisible = !isLoadingQuestion && !showQuestion;
+    if (stageLoadError) {
+        return (
+            <div className="w-full h-full bg-vito-blue flex flex-col items-center justify-center text-center p-4">
+                <p className="text-white text-3xl font-press-start text-vito-red mb-4">¡Oh no!</p>
+                <p className="text-white text-xl font-fredoka mb-8">{stageLoadError}</p>
+                <button
+                    onClick={() => setupStage(stage)}
+                    className="bg-vito-green text-white font-bold py-3 px-6 rounded-full hover:bg-vito-yellow hover:text-black transition-transform transform hover:scale-110 text-2xl"
+                >
+                    Reintentar
+                </button>
+            </div>
+        );
+    }
+
+    const isGameVisible = !showQuestion;
     const isPlayerVisible = isGameVisible && bonusTransitionState !== 'falling' && bonusTransitionState !== 'returning';
 
     const cameraX = (gameMode === 'finalRun' || gameMode === 'preCastleRun') ? Math.max(0, playerPosition.current.x - 40) : 0;
@@ -1124,11 +1181,6 @@ const Game: React.FC<GameProps> = ({ level, onGameOver, onRestart }) => {
             {isHelpVisible && <HelpModal onClose={toggleHelp} />}
             {showQuestion && currentQuestion && (
                 <QuestionModal question={currentQuestion} onAnswer={handleAnswer} />
-            )}
-             {isLoadingQuestion && (
-                 <div className="absolute inset-0 bg-black bg-opacity-70 flex items-center justify-center z-40">
-                    <p className="text-white text-3xl font-press-start">Cargando Pregunta...</p>
-                </div>
             )}
             {showBonusInfoModal && (
                 <div className="absolute inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4 font-fredoka">
