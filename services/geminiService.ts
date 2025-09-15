@@ -10,7 +10,7 @@ try {
     const apiKey = process.env.API_KEY;
 
     if (!apiKey) {
-        throw new Error("API_KEY no configurada. Asegúrate de añadir VITE_API_KEY en los ajustes de Netlify.");
+        throw new Error("API_KEY no está configurada. Asegúrate de que la variable de entorno API_KEY esté disponible.");
     }
     ai = new GoogleGenAI({ apiKey });
 
