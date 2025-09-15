@@ -23,6 +23,19 @@ try {
     console.error("Error de inicialización de Gemini:", initError);
 }
 
+/**
+ * Corrige las secuencias de escape de Unicode doblemente escapadas en una cadena JSON.
+ * A veces, la API puede devolver '\\uXXXX' en lugar de '\uXXXX'.
+ * Esta función normaliza la cadena para que JSON.parse() pueda interpretarla correctamente.
+ * @param jsonString La cadena JSON cruda de la API.
+ * @returns Una cadena JSON limpia y lista para ser parseada.
+ */
+const cleanJsonString = (jsonString: string): string => {
+    // Reemplaza la secuencia de escape literal '\\u' por '\u'
+    return jsonString.replace(/\\\\u/g, '\\u');
+};
+
+
 // --- Helpers para generación de números ---
 
 const getNumberRange = (level: GameLevel) => {
@@ -227,7 +240,9 @@ export const generateQuestion = async (level: GameLevel): Promise<Question> => {
         });
         
         const responseText = response.text.trim();
-        const parsedQuestion = JSON.parse(responseText) as Question;
+        // Limpiar la cadena de respuesta antes de parsearla para corregir posibles errores de formato de la API.
+        const cleanedText = cleanJsonString(responseText);
+        const parsedQuestion = JSON.parse(cleanedText) as Question;
 
         if (parsedQuestion.answer !== answer) {
              console.warn(`La IA generó una respuesta (${parsedQuestion.answer}) que no coincide con la calculada (${answer}). Corrigiendo.`);
