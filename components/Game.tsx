@@ -1,9 +1,3 @@
-
-
-
-
-
-
 import React, { useState, useEffect, useCallback, useRef, useReducer } from 'react';
 import { GameLevel, Question, QuestionBlockState, PlatformState, GemState, RockPlatformState, TortubitState } from '../types';
 import { generateQuestion } from '../services/geminiService';
@@ -266,6 +260,7 @@ const Game: React.FC<GameProps> = ({ level, onGameOver, onRestart }) => {
     const [isStageLoading, setIsStageLoading] = useState(true);
     const [stageLoadError, setStageLoadError] = useState<string | null>(null);
     const [preloadedQuestions, setPreloadedQuestions] = useState<Question[]>([]);
+    const [loadingProgress, setLoadingProgress] = useState(0);
 
     const [isInvincible, setIsInvincible] = useState(false);
     const [showQuestion, setShowQuestion] = useState(false);
@@ -338,6 +333,7 @@ const Game: React.FC<GameProps> = ({ level, onGameOver, onRestart }) => {
     const setupStage = useCallback(async (currentStage: number) => {
         setIsStageLoading(true);
         setStageLoadError(null);
+        setLoadingProgress(0);
         isPaused.current = true;
     
         const config = STAGE_CONFIG[level][currentStage - 1];
@@ -350,7 +346,14 @@ const Game: React.FC<GameProps> = ({ level, onGameOver, onRestart }) => {
         try {
             const numQuestions = config.questions.length;
             if (numQuestions > 0) {
-                const questionPromises = Array.from({ length: numQuestions }, () => generateQuestion(level));
+                let loadedCount = 0;
+                const questionPromises = Array.from({ length: numQuestions }, () => {
+                    return generateQuestion(level).then(question => {
+                        loadedCount++;
+                        setLoadingProgress(Math.round((loadedCount / numQuestions) * 100));
+                        return question;
+                    });
+                });
                 const questions = await Promise.all(questionPromises);
                 setPreloadedQuestions(questions);
             } else {
@@ -990,8 +993,9 @@ const Game: React.FC<GameProps> = ({ level, onGameOver, onRestart }) => {
     
     if (isStageLoading) {
         return (
-            <div className="w-full h-full bg-vito-blue flex items-center justify-center">
+            <div className="w-full h-full bg-vito-blue flex flex-col items-center justify-center text-center">
                 <p className="text-white text-4xl font-press-start animate-pulse">Preparando la etapa...</p>
+                <p className="text-white text-6xl font-press-start mt-6">{loadingProgress}%</p>
             </div>
         );
     }
