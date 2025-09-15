@@ -6,11 +6,11 @@ let initError: string | null = null;
 
 try {
     // @google/genai-ts-sdk-guide-update: The API key must be obtained from process.env.API_KEY.
-    // La API Key se obtiene de las variables de entorno, que Vite inyectará durante la construcción.
+    // La API Key se obtiene de las variables de entorno inyectadas por Vite.
     const apiKey = process.env.API_KEY;
 
     if (!apiKey) {
-        throw new Error("API_KEY no está configurada. Asegúrate de que la variable de entorno API_KEY esté disponible.");
+        throw new Error("API_KEY no configurada. Asegúrate de que VITE_API_KEY (en .env) o API_KEY (en el entorno del servidor) esté disponible.");
     }
     ai = new GoogleGenAI({ apiKey });
 
