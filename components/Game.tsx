@@ -11,6 +11,7 @@ import UndergroundBackground from './UndergroundBackground';
 import Gem from './Gem';
 import Tortubit from './Tortubit';
 import HelpModal from './HelpModal';
+import InstructionsModal from './InstructionsModal';
 import { RedArrowIcon, CheckmarkIcon } from './icons';
 import OnScreenControls from './OnScreenControls';
 
@@ -272,6 +273,7 @@ const Game: React.FC<GameProps> = ({ level, onGameOver, onRestart }) => {
     const [showBonusInfoModal, setShowBonusInfoModal] = useState(false);
     const [bonusInfoShown, setBonusInfoShown] = useState(false);
     const [showLevelCompleteModal, setShowLevelCompleteModal] = useState(false);
+    const [showInstructionsModal, setShowInstructionsModal] = useState(false);
     
     const [questionBlocks, setQuestionBlocks] = useState<QuestionBlockState[]>([]);
     const [platforms, setPlatforms] = useState<PlatformState[]>([]);
@@ -301,6 +303,11 @@ const Game: React.FC<GameProps> = ({ level, onGameOver, onRestart }) => {
             return !v;
         });
     }, []);
+
+    const handleCloseInstructions = () => {
+        setShowInstructionsModal(false);
+        isPaused.current = false;
+    };
     
     const displayMessage = (msg: string, duration: number = 2000) => {
         setGameMessage(msg);
@@ -405,7 +412,12 @@ const Game: React.FC<GameProps> = ({ level, onGameOver, onRestart }) => {
             displayMessage(`Etapa ${level}-${currentStage}`, 2000);
     
             setIsStageLoading(false);
-            isPaused.current = false;
+            // Show instructions only on the very first stage of the game (1-1)
+            if (level === GameLevel.FirstGrade && currentStage === 1) {
+                setShowInstructionsModal(true);
+            } else {
+                isPaused.current = false;
+            }
     
         } catch (error) {
             console.error("Error al precargar las preguntas de la etapa:", error);
@@ -1182,6 +1194,7 @@ const Game: React.FC<GameProps> = ({ level, onGameOver, onRestart }) => {
             <OnScreenControls keysPressed={keysPressed} onJump={handleJump} />
 
             {/* Modals are outside the scrolling world container */}
+            {showInstructionsModal && <InstructionsModal onClose={handleCloseInstructions} />}
             {isHelpVisible && <HelpModal onClose={toggleHelp} />}
             {showQuestion && currentQuestion && (
                 <QuestionModal question={currentQuestion} onAnswer={handleAnswer} />
