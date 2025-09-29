@@ -1,13 +1,13 @@
+// Fix: Add a triple-slash directive to make Node.js types available for 'process'.
+/// <reference types="node" />
+
 import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
   // Carga las variables de entorno del archivo .env
-  
-  // Fix: Replaced `process.cwd()` with `'.'` to resolve a TypeScript type error where `process.cwd` is not defined.
-  // For a root `vite.config.ts`, `'.'` correctly resolves to the project root to load .env files.
-  const env = loadEnv(mode, '.', '');
+  const env = loadEnv(mode, process.cwd(), '');
   
   return {
     plugins: [react()],
