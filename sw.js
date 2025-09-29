@@ -1,10 +1,10 @@
-const CACHE_NAME = 'vito-math-v3';
+const CACHE_NAME = 'vito-math-v4';
 const urlsToCache = [
   '/',
   '/index.html',
   '/manifest.json',
-  '/icon-192.png',
-  '/icon-512.png',
+  'https://raw.githubusercontent.com/vdhuerta/assets-aplications/main/android(5)-chrome-192x192.png',
+  'https://raw.githubusercontent.com/vdhuerta/assets-aplications/main/iphone(5)-safari-512x512.png',
 ];
 
 self.addEventListener('install', event => {

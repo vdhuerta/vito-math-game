@@ -1,6 +1,5 @@
-// Fix: Add a triple-slash directive to make Node.js types available for 'process'.
-/// <reference types="node" />
-
+// Fix: Import `process` directly to make Node.js types available.
+import process from 'node:process';
 import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 
